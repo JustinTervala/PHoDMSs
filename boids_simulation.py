@@ -192,40 +192,36 @@ def update(*args):
 
 
 
-# -----------------------------------------------------------------------------
-if __name__ == '__main__':
+def run_sim(
+    num_boids,
+    sep_in,
+    ali_in,
+    coh_in,
+    dms_filename,
+    seprad_in=50,
+    alirad_in=100,
+    cohrad_in=150,
+    nframes=999,
+    animate=True
+):
+    global sep, ali, coh, seprad, alirad, cohrad, filename, trace, flock,   \
+        collection
 
-    global sep, ali, coh, seprad, alirad, cohrad, filename
-
-
-    if len(sys.argv) == 6:
-        n = int(sys.argv[1])
-        sep = float(sys.argv[2])
-        ali = float(sys.argv[3])
-        coh = float(sys.argv[4])
-        seprad = 50
-        alirad = 100
-        cohrad = 150
-        filename = str(sys.argv[5])
-    elif len(sys.argv) == 9:
-        n = int(sys.argv[1])
-        sep = float(sys.argv[2])
-        seprad = float(sys.argv[3])
-        ali = float(sys.argv[4])
-        alirad = float(sys.argv[5])
-        coh = float(sys.argv[6])
-        cohrad = float(sys.argv[7])
-        filename = str(sys.argv[8])
-    else:
-        print('Please input either 5 or 8 arguments: (to allow different input types, alter code at top of main)')
-        print('number of points, separation, alignment, cohesion, outfile')
-        print('number of points, separation, sep radius, alignment, ali radius, cohesion, coh radius, outfile')
-        exit()
+    n = num_boids
+    filename = dms_filename
+    sep = sep_in
+    ali = ali_in
+    coh = coh_in
+    seprad = seprad_in
+    alirad = alirad_in
+    cohrad = cohrad_in
 
     if os.path.exists(filename):
         os.remove(filename)
-    if os.path.exists(filename+"_animation.mp4"):
-        os.remove(filename+"_animation.mp4")
+    
+    # Not saving the animation so ignore this check...
+    # if os.path.exists(filename+"_animation.mp4"):
+    #     os.remove(filename+"_animation.mp4")
 
     with open(filename, 'w') as outfile:
         outfile.write(str(n) + '\n')
@@ -243,14 +239,60 @@ if __name__ == '__main__':
     ax.set_yticks([])
 
 
-    animation = FuncAnimation(fig, update, interval=50, frames=999, repeat=False)
-    plt.show()
-    
-    # Saving the animation causes update to be called again 'frames' number of
-    # times. Dont want this so comment out here. Dont really need the animation
-    # anyway...
-    # animation.save(filename + '_animation.mp4', fps=20)
-    # print("Animation saved")
+    # animation = FuncAnimation(fig, update, interval=50, frames=999, repeat=False)
+    if animate:
+        animation = FuncAnimation(
+            fig, update, interval=50, frames=nframes, repeat=False
+        )
+        plt.show()
+        # Saving the animation causes update to be called again 'frames' number 
+        # of times. Dont want this so comment out here. Dont really need the 
+        # animation anyway...
+        # animation.save(filename + '_animation.mp4', fps=20)
+        # print("Animation saved")
+
+    else:
+        for _ in range(nframes):
+            update()
 
     print("Done")
 
+# -----------------------------------------------------------------------------
+if __name__ == '__main__':
+
+    if len(sys.argv) == 6:
+        n = int(sys.argv[1])
+        sep = float(sys.argv[2])
+        ali = float(sys.argv[3])
+        coh = float(sys.argv[4])
+        seprad = 50
+        alirad = 100
+        cohrad = 150
+        filename = str(sys.argv[5])
+
+    elif len(sys.argv) == 9:
+        n = int(sys.argv[1])
+        sep = float(sys.argv[2])
+        seprad = float(sys.argv[3])
+        ali = float(sys.argv[4])
+        alirad = float(sys.argv[5])
+        coh = float(sys.argv[6])
+        cohrad = float(sys.argv[7])
+        filename = str(sys.argv[8])
+    else:
+        print('Please input either 5 or 8 arguments: (to allow different input types, alter code at top of main)')
+        print('number of points, separation, alignment, cohesion, outfile')
+        print('number of points, separation, sep radius, alignment, ali radius, cohesion, coh radius, outfile')
+        exit()
+
+    run_sim(
+        n,
+        sep,
+        ali,
+        coh,
+        filename,
+        seprad_in=50,
+        alirad_in=100,
+        cohrad_in=150,
+        animate=True
+    )
