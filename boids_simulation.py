@@ -245,6 +245,12 @@ if __name__ == '__main__':
 
     animation = FuncAnimation(fig, update, interval=50, frames=999, repeat=False)
     plt.show()
-    animation.save(filename + '_animation.mp4', fps=20)
-    print("Animation saved")
+    
+    # Saving the animation causes update to be called again 'frames' number of
+    # times. Dont want this so comment out here. Dont really need the animation
+    # anyway...
+    # animation.save(filename + '_animation.mp4', fps=20)
+    # print("Animation saved")
+
+    print("Done")
 
