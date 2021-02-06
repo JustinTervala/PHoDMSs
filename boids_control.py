@@ -4,14 +4,58 @@
 
 import argparse
 from datetime import datetime, timezone
+import numpy as np
 import sys
 
 #-------------------------------------------------------------------------------
 # Local Imports
 #-------------------------------------------------------------------------------
 
+import betti_generator
 import boids_simulation
 import logger
+
+################################################################################
+################################################################################
+# Class responsible for implementing control on a boid simulation
+#
+class BoidController:
+
+	def __init__(
+		self,
+		betti_start_thresh,
+		betti_end_thresh,
+		betti_thresh_spacing,
+	):
+		# TODO: Mabye have some state variables for when betti numbers are 
+		# generated
+		
+		self.betti_start_thresh 	= betti_start_thresh
+		self.betti_end_thresh 		= betti_end_thresh
+		self.betti_thresh_spacing 	= betti_thresh_spacing
+
+	###########################################################################
+	###########################################################################
+	# Callback for each time step in the boid simulation which should 
+	# enforce control...
+	#
+	def control_callback(self, flock_positions):
+
+		# Find the betti numbers for the flock positions...
+
+		betti_array = betti_generator.get_betti_array(
+			self.betti_start_thresh,
+			self.betti_end_thresh,
+			self.betti_thresh_spacing,
+			2,
+			[flock_positions] # Turn this into a list
+		)
+
+		logr.debug(betti_array)
+
+		# TODO: Need to see if the current topology is 'correct' and enforce
+		# a control on the positions if necessary to generate the desired 
+		# topology...
 
 
 ################################################################################
@@ -31,17 +75,20 @@ def parse_cmd_line(as_dict=False):
 	"""
 
 	defaults = {
-		"log_level" 		: "INFO",
-		"separation_force"	: 0,
-		"separation_radius"	: 50,
-		"alignment_force"	: 0,
-		"alignment_radius"	: 100,
-		"cohesion_force"	: 0,
-		"cohesion_radius"	: 150,
-		"dms_fname"			: datetime.now(timezone.utc).strftime(
+		"log_level" 			: "INFO",
+		"separation_force"		: 0,
+		"separation_radius"		: 50,
+		"alignment_force"		: 0,
+		"alignment_radius"		: 100,
+		"cohesion_force"		: 0,
+		"cohesion_radius"		: 150,
+		"dms_fname"				: datetime.now(timezone.utc).strftime(
 			"%Y-%m-%d_%H:%M:%S%z") + "_dms-out.txt",
-		"nframes"			: 999,
-		"animate"			: False
+		"nframes"				: 999,
+		"animate"				: False,
+		"betti_start_thresh"	: 0,
+		"betti_end_thresh"		: 50,
+		"betti_thresh_spacing"	: 5
 	}
 
 	# Add sub parser
@@ -88,6 +135,18 @@ def parse_cmd_line(as_dict=False):
 		default=defaults["animate"],
 		help=""""""
 	)
+	parser.add_argument("--betti_start_thresh", type=int,
+		default=defaults["betti_start_thresh"],
+		help=""""""
+	)
+	parser.add_argument("--betti_end_thresh", type=int,
+		default=defaults["betti_end_thresh"],
+		help=""""""
+	)
+	parser.add_argument("--betti_thresh_spacing", type=int,
+		default=defaults["betti_thresh_spacing"],
+		help=""""""
+	)
 	parser.add_argument("--log_level", 
 		choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"],
 		default=defaults["log_level"],
@@ -106,12 +165,24 @@ def parse_cmd_line(as_dict=False):
 #
 def main():
 	
+	# TODO: Very much dislike the use of global but doing it here to save time
+	global logr
+
 	# Get the command line arguments...
 
 	args, _ = parse_cmd_line(as_dict=True)
 	
+	# Get instance of the logger...
+
+	logr = logger.get_logger(__name__, level=args["log_level"])
+
 	# Run the simulation...
 
+	boid_ctrl = BoidController(
+		args["betti_start_thresh"],
+		args["betti_end_thresh"],
+		args["betti_thresh_spacing"]
+	)
 	boids_simulation.run_sim(
 		num_boids=args["num_points"],
 		sep_in=args["separation_force"],
@@ -121,6 +192,7 @@ def main():
 		seprad_in=args["separation_radius"],
 		alirad_in=args["alignment_radius"],
 		cohrad_in=args["cohesion_radius"],
+		control_callback=boid_ctrl.control_callback,
 		nframes=args["nframes"],
 		animate=args["animate"]
 	)
@@ -128,7 +200,7 @@ def main():
 
 ################################################################################
 ################################################################################
-# Entry point for testing...
+# Entry point...
 #
 if __name__ == "__main__":
 	main()

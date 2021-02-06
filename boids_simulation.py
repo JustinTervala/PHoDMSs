@@ -176,12 +176,13 @@ def update(*args):
                                                flock.velocity[:, 0])
     collection.update()
 
+    if ctrl_callback:
+        ctrl_callback(flock.position)
+
     #collect positions
     f = open(filename, "a")
     np.savetxt(f, flock.position, fmt='%.8f', newline='\n')
     f.close()
-
-
 
     # Trace updating
     if trace is not None:
@@ -189,7 +190,6 @@ def update(*args):
         trace[height-1-P[:, 1], P[:, 0]] = .75
         trace *= .99
         im.set_array(trace)
-
 
 
 def run_sim(
@@ -201,12 +201,13 @@ def run_sim(
     seprad_in=50,
     alirad_in=100,
     cohrad_in=150,
+    control_callback=None,
     nframes=999,
     animate=True
 ):
     global sep, ali, coh, seprad, alirad, cohrad, filename, trace, flock,   \
-        collection
-
+        collection, ctrl_callback
+    
     n = num_boids
     filename = dms_filename
     sep = sep_in
@@ -215,6 +216,7 @@ def run_sim(
     seprad = seprad_in
     alirad = alirad_in
     cohrad = cohrad_in
+    ctrl_callback = control_callback
 
     if os.path.exists(filename):
         os.remove(filename)

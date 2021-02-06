@@ -45,6 +45,39 @@ def get_points(file, numpoints):
 	return points
 
 
+def get_betti_array(
+	start_thresh,
+	end_thresh,
+	spacing,
+	time_samples,
+	points
+):
+	num_times = len(points)
+	thresholds = [i for i in range(start_thresh, end_thresh+1, spacing)]
+	# times = [i for i in range(start_thresh,start_thresh+1+num_times*spacing,spacing)] 
+
+	useddists = [get_dist(points[i]) for i in range(0,num_times,int(num_times/(time_samples-1)))]
+	useddists = np.array(useddists)
+	bettiarray = np.zeros((len(thresholds),len(useddists),len(useddists)))
+	n = len(useddists)
+	
+	for i in range(n):
+		dgms = get_dgms(useddists[i])
+		ba = [get_betti_count(dgms,thresh) for thresh in thresholds]
+		ba = np.array(ba)
+		bettiarray[:,i,n-i-1] = ba
+
+	for diag in range(n):
+		for row in range(n-diag-1):
+			newuseddists = np.minimum(useddists[row],useddists[row+1])
+			dgms = get_dgms(newuseddists)
+			useddists[row] = newuseddists
+			ba = [get_betti_count(dgms,thresh) for thresh in thresholds]
+			ba = np.array(ba)
+			bettiarray[:,row,n-diag-row-2]=ba
+	
+	return bettiarray, n
+
 if __name__ == '__main__':
 
 	if len(sys.argv) == 7:
@@ -71,31 +104,16 @@ if __name__ == '__main__':
 	for i in range(num_times):
 		points.append(get_points(myfile,num_points))
 	myfile.close()
-
-	thresholds = [i for i in range(start_thresh, end_thresh+1, spacing)]
-	times = [i for i in range(start_thresh,start_thresh+1+num_times*spacing,spacing)] 
-
-	useddists = [get_dist(points[i]) for i in range(0,num_times,int(num_times/(time_samples-1)))]
-	useddists = np.array(useddists)
-	bettiarray = np.zeros((len(thresholds),len(useddists),len(useddists)))
-	n = len(useddists)
 	
-	for i in range(n):
-		dgms = get_dgms(useddists[i])
-		ba = [get_betti_count(dgms,thresh) for thresh in thresholds]
-		ba = np.array(ba)
-		bettiarray[:,i,n-i-1] = ba
+	bettiarray, n = get_betti_array(
+		start_thresh,
+		end_thresh,
+		spacing,
+		time_samples,
+		points
+	)
 
-	for diag in range(n):
-		for row in range(n-diag-1):
-			newuseddists = np.minimum(useddists[row],useddists[row+1])
-			dgms = get_dgms(newuseddists)
-			useddists[row] = newuseddists
-			ba = [get_betti_count(dgms,thresh) for thresh in thresholds]
-			ba = np.array(ba)
-			bettiarray[:,row,n-diag-row-2]=ba
-	
-	infostring = str(len(useddists)) + ' ' + str(start_thresh) + ' ' + str(end_thresh) + ' ' + str(spacing) 
+	infostring = str(n) + ' ' + str(start_thresh) + ' ' + str(end_thresh) + ' ' + str(spacing) 
 	
 	with open(betti_file, 'w') as outfile:
 		outfile.write(infostring + '\n')
