@@ -1,6 +1,8 @@
 import numpy as np
 import sys
 
+import betti_generator
+
 def erosion(f,tfx,tfy,tfz,g,tgx,tgy,tgz,spacing,timew,scalew):
 	nt = tfx + tfy + tfz + tgx + tgy + tgz
 	newtimes = np.array(nt)
@@ -112,36 +114,30 @@ if __name__ == "__main__":
 		print('please input two filenames of betti-0 functions, or two filenames and integer weights for both time and scale')
 		exit()
 
-	with open(filename1, 'r') as f1:
-		firstline1 = f1.readline()
-		info1 = firstline1.split()
-		num_times1 = int(info1[0])
-		start_thresh1 = int(info1[1])
-		end_thresh1 = int(info1[2])
-		spacing1 = int(info1[3])
-		thresholds1 = [i for i in range(start_thresh1,end_thresh1+1,spacing1)]
-		times1 = [i for i in range(start_thresh1, start_thresh1 + spacing1*num_times1, spacing1)]
+	
+	num_times1, \
+	start_thresh1, \
+	end_thresh1, \
+	spacing1, \
+	F1 = betti_generator.read_betti_file(filename1)
+	thresholds1 = [i for i in range(start_thresh1,end_thresh1+1,spacing1)]
+	times1 = [i for i in range(start_thresh1, start_thresh1 + spacing1*num_times1, spacing1)]
+	F1 = F1.reshape((len(thresholds1),len(times1),len(times1)))
 
-	with open(filename2, 'r') as f2:
-		firstline2 = f2.readline()
-		info2 = firstline2.split()
-		num_times2 = int(info2[0])
-		start_thresh2 = int(info2[1])
-		end_thresh2 = int(info2[2])
-		spacing2 = int(info2[3])
-		thresholds2 = [i for i in range(start_thresh2,end_thresh2+1,spacing2)]
-		times2 = [i for i in range(start_thresh2, start_thresh2 + spacing2*num_times2, spacing2)]
+	num_times2, \
+	start_thresh2, \
+	end_thresh2, \
+	spacing2, \
+	F2 = betti_generator.read_betti_file(filename2)
+	thresholds2 = [i for i in range(start_thresh2,end_thresh2+1,spacing2)]
+	times2 = [i for i in range(start_thresh2, start_thresh2 + spacing2*num_times2, spacing2)]
+	F2 = F2.reshape((len(thresholds2),len(times2),len(times2)))
 	
 	if spacing1 != spacing2:
 		print("The current algorithm only works when the threshold parameters for the two betti-0 functions have the same spacing. Please re-generate the betti-0 functions so this is the case.")
 		exit()
 	if len(times1) != len(times2):
 		print("The current algorithm only works when the same number of time samples are used for the two betti-0 functions. Please re-generate the betti-0 functions so this is the case.")
-
-	F1 = np.loadtxt(filename1, skiprows=1)
-	F1 = F1.reshape((len(thresholds1),len(times1),len(times1)))
-	F2 = np.loadtxt(filename2, skiprows=1)
-	F2 = F2.reshape((len(thresholds2),len(times2),len(times2)))
 	
 	print(erosion(F1,thresholds1,times1,times1,F2,thresholds2,times1,times1,spacing1,time_weight,scale_weight))
 

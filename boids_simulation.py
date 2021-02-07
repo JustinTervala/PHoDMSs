@@ -66,6 +66,10 @@ class Flock:
         self.position[:, 1] = height/2 + np.sin(angle)*radius
 
 
+    def set_positions(self, positions):
+        self.position = positions
+
+
     def run(self):
 
         global distance, counter, sep, ali, coh
@@ -201,6 +205,7 @@ def run_sim(
     seprad_in=50,
     alirad_in=100,
     cohrad_in=150,
+    initial_positions=None,
     control_callback=None,
     nframes=999,
     animate=True
@@ -228,7 +233,16 @@ def run_sim(
     with open(filename, 'w') as outfile:
         outfile.write(str(n) + '\n')
     width, height = 500, 250
+    
     flock = Flock(n)
+    if not initial_positions is None:
+        if initial_positions.shape[0] != num_boids:
+            print("initial_positions.shape[0] != num_boids : {} != {}".format(
+                initial_positions.shape[0], num_boids
+            ))
+            sys.exit()
+        flock.set_positions(initial_positions)
+    
     collection = MarkerCollection(n)
     trace = None
 

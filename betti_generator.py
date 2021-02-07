@@ -76,7 +76,37 @@ def get_betti_array(
 			ba = np.array(ba)
 			bettiarray[:,row,n-diag-row-2]=ba
 	
-	return bettiarray, n
+	return bettiarray, n, thresholds
+
+
+def write_betti_array(
+	bettiarray,
+	betti_file,
+	start_thresh,
+	end_thresh,
+	spacing
+):	
+	infostring = str(n) + ' ' + str(start_thresh) + ' ' + str(end_thresh) + ' ' + str(spacing) 
+	with open(betti_file, 'w') as outfile:
+		if infostring:
+			outfile.write(infostring + '\n')
+		for data_slice in bettiarray:
+			np.savetxt(outfile, data_slice, fmt='%d')
+
+
+def read_betti_file(fname):
+
+	with open(fname, 'r') as f1:
+		firstline1 = f1.readline()
+		info1 = firstline1.split()
+		num_times = int(info1[0])
+		start_thresh = int(info1[1])
+		end_thresh = int(info1[2])
+		spacing = int(info1[3])
+	
+	betti_array = np.loadtxt(fname, skiprows=1)
+
+	return num_times, start_thresh, end_thresh, spacing, betti_array
 
 if __name__ == '__main__':
 
@@ -105,7 +135,7 @@ if __name__ == '__main__':
 		points.append(get_points(myfile,num_points))
 	myfile.close()
 	
-	bettiarray, n = get_betti_array(
+	bettiarray, n, _ = get_betti_array(
 		start_thresh,
 		end_thresh,
 		spacing,
@@ -113,11 +143,12 @@ if __name__ == '__main__':
 		points
 	)
 
-	infostring = str(n) + ' ' + str(start_thresh) + ' ' + str(end_thresh) + ' ' + str(spacing) 
-	
-	with open(betti_file, 'w') as outfile:
-		outfile.write(infostring + '\n')
-		for data_slice in bettiarray:
-			np.savetxt(outfile, data_slice, fmt='%d')
+	write_betti_array(
+		bettiarray, 
+		betti_file,
+		start_thresh,
+		end_thresh,
+		spacing
+	)
 
 
