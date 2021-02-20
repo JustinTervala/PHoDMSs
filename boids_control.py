@@ -29,8 +29,28 @@ class BoidController:
 		betti_start_thresh,
 		betti_end_thresh,
 		betti_thresh_spacing,
-		target_betti_file
+		target_betti_file,
+		target_points
 	):
+
+		# Previous points in the simulation...
+
+		self.prev_pos = np.copy(target_points)
+
+		# Compute pariwise differenes for points in the target...
+
+		self.target_dists = squareform(pdist(target_points, "euclidean"))
+
+		# Define s for the kernel function as average pairwise difference of 
+		# target points plus one std deviation...
+
+		self.s = np.median(self.target_dists) #+ np.std(self.target_dists)
+		logr.debug("Kernel scale parameter 's' : {}".format(self.s))
+
+		# Threshold for the loss...
+		self.loss_thresh = 0#4.0e5
+		self.num_correction_tries = int(target_points.shape[0] * 0.5)
+
 		# TODO: Mabye have some state variables for when betti numbers are 
 		# generated
 		
@@ -75,14 +95,35 @@ class BoidController:
 	###########################################################################
 	#
 	#
+	def loss(self, x_prime_dists):
+		
+		# Compute the kernel...
+		k = np.where(
+			x_prime_dists > self.s, 
+			0*x_prime_dists,
+			np.ones_like(x_prime_dists)
+		)
+
+		# Regularization...
+		tau = np.sum(
+			k * (x_prime_dists - self.target_dists) * \
+				(x_prime_dists - self.target_dists)
+		)
+
+		return tau
+
+
+	###########################################################################
+	###########################################################################
+	#
+	#
 	def compare_topology(self, current_betti_array):
 
 		# Average percent difference...
+		a = current_betti_array
+		b = self.target_betti_array
 
-		return np.average(
-			np.abs(current_betti_array - self.target_betti_array) /		\
-			(current_betti_array + self.target_betti_array) / 2.0
-		)
+		return np.average(np.abs(a - b) / ((a + b) / 2.0))
 
 
 	###########################################################################
@@ -90,99 +131,117 @@ class BoidController:
 	# Callback for each time step in the boid simulation which should 
 	# enforce control...
 	#
-	def control_boids(self, flock_positions):
+	def control_boids(self, flock):
 
-		# Find the betti numbers for the flock positions...
+		# # Find the betti numbers for the flock positions...
 
-		betti_array, _, thresholds = betti_generator.get_betti_array(
-			self.betti_start_thresh,
-			self.betti_end_thresh,
-			self.betti_thresh_spacing,
-			2,
-			[flock_positions] # Turn this into a list
-		)
-
-		# Need to see if the current topology is 'correct' and enforce a control
-		# on the positions if necessary to generate the desired topology...
-
-		tda_diff = self.compare_topology(betti_array)
-		logr.debug("TDA percent difference {}".format(tda_diff))
-
-		while tda_diff > 0.04:
-
-			# Find the most likely culprit causing the difference. Lets say its
-			# the boid with the max average pairwise distances...
-
-			dists = squareform(pdist(flock_positions, "euclidean"))
-			avg_dists = np.average(dists, axis=1)
-			rogue_boid = np.argmax(avg_dists)
-			logr.debug("Rogue boid {} : {}".format(
-				rogue_boid, flock_positions[rogue_boid]
-			))
-
-			# Find the center of mass and average of pairwise distances from it.
-			# Then find the angle from the CoM to the rogue point. Update the
-			# rogue point's position using the r,theta just calculated...
-
-			center_of_mass = np.average(flock_positions, axis=0)
-			logr.debug("Center of mass center_of_mass : {}".format(
-				center_of_mass
-			))
-
-			avg_dist_com = np.average(
-				np.linalg.norm(
-					np.repeat(
-						center_of_mass, 
-						flock_positions.shape[0]
-					).reshape((-1, 2), order="F") - flock_positions,
-					axis=1
-				)
-			)
-			logr.debug(avg_dist_com)
-			
-			theta = np.arctan2(
-				flock_positions[rogue_boid, 1] - center_of_mass[1],
-				flock_positions[rogue_boid, 0] - center_of_mass[0]
-			)
-			logr.debug(np.rad2deg(theta))
-
-			# Update the x and y position...
-			flock_positions[rogue_boid,0] = avg_dist_com * np.cos(theta)
-			flock_positions[rogue_boid,1] = avg_dist_com * np.sin(theta)
-			flock_positions[rogue_boid] = flock_positions[rogue_boid] + center_of_mass
-
-			logr.debug("Corrected rogue boid {} : {}".format(
-				rogue_boid, flock_positions[rogue_boid]
-			))
-
-			# Recalculate the TDA difference...
-			betti_array, _, thresholds = betti_generator.get_betti_array(
-				self.betti_start_thresh,
-				self.betti_end_thresh,
-				self.betti_thresh_spacing,
-				2,
-				[flock_positions] # Turn this into a list
-			)
-			tda_diff = self.compare_topology(betti_array)
-			logr.debug("Recalculated TDA percent difference {}".format(tda_diff))
-
-
-		# edist = betti0_erosion_distance.erosion(
-		# 	self.target_betti_array,
-		# 	self.target_thresholds,
-		# 	self.target_times,
-		# 	self.target_times,
-		# 	betti_array,
-		# 	thresholds,
-		# 	self.target_times,
-		# 	self.target_times,
+		# betti_array, _, thresholds = betti_generator.get_betti_array(
+		# 	self.betti_start_thresh,
+		# 	self.betti_end_thresh,
 		# 	self.betti_thresh_spacing,
-		# 	1,	#time_weight
-		# 	1	#scale_weight
+		# 	2,
+		# 	[flock.position] # Turn this into a list
 		# )
 
-		# logr.debug("Erosion Distance:")
-		# logr.debug(edist)
+		# # Need to see if the current topology is 'correct' and enforce a control
+		# # on the positions if necessary to generate the desired topology...
+
+		# tda_diff = self.compare_topology(betti_array)
+		# logr.debug("TDA percent difference {}".format(tda_diff))
+
+		dists = squareform(pdist(flock.position, "euclidean"))
+		loss = self.loss(dists)
+		prev_loss = loss
+		correction_try = 0
+
+		logr.debug("Current loss : {}".format(loss))
+
+		update_positions = np.random.choice(
+			flock.position.shape[0], self.num_correction_tries, replace=False
+		)
+		while loss > self.loss_thresh and \
+			correction_try < self.num_correction_tries:
+
+			# Randomly sample a point to replace using its position from the
+			# previous time step...
+
+			update_pos = update_positions[correction_try]
+			boid_pos_pre = flock.position[update_pos]
+			flock.position[update_pos] = np.copy(self.prev_pos[update_pos])
+
+			# Recalculate the loss...
+			recalc_dists = squareform(pdist(flock.position, "euclidean"))
+			loss = self.loss(recalc_dists)
+
+			if loss >= prev_loss:
+				# Refuse the update since it made the loss go up...
+				flock.position[update_pos] = boid_pos_pre
+			else:
+				logr.debug("Loss after correction : {}".format(loss))
+
+			# Update the number of corrections tried...
+			correction_try = correction_try + 1
+
+		# 	# Find the most likely culprit causing the difference. Lets say its
+		# 	# the boid with the max average pairwise distances...
+
+		# 	dists = squareform(pdist(flock.position, "euclidean"))
+		# 	avg_dists = np.average(dists, axis=1)
+		# 	rogue_boid = np.argmax(avg_dists)
+		# 	logr.debug("Rogue boid {} : {}".format(
+		# 		rogue_boid, flock.position[rogue_boid]
+		# 	))
+
+		# 	# Find the center of mass and average of pairwise distances from it.
+		# 	# Then find the angle from the CoM to the rogue point. Update the
+		# 	# rogue point's position using the r,theta just calculated...
+
+		# 	center_of_mass = np.average(flock.position, axis=0)
+		# 	logr.debug("Center of mass center_of_mass : {}".format(
+		# 		center_of_mass
+		# 	))
+
+		# 	avg_dist_com = np.average(
+		# 		np.linalg.norm(
+		# 			np.repeat(
+		# 				center_of_mass, 
+		# 				flock.position.shape[0]
+		# 			).reshape((-1, 2), order="F") - flock.position,
+		# 			axis=1
+		# 		)
+		# 	)
+		# 	logr.debug(avg_dist_com)
+			
+		# 	theta = np.arctan2(
+		# 		flock.position[rogue_boid, 1] - center_of_mass[1],
+		# 		flock.position[rogue_boid, 0] - center_of_mass[0]
+		# 	)
+		# 	logr.debug(np.rad2deg(theta))
+
+		# 	# Update the x and y position...
+		# 	flock.position[rogue_boid,0] = avg_dist_com * np.cos(theta)
+		# 	flock.position[rogue_boid,1] = avg_dist_com * np.sin(theta)
+		# 	flock.position[rogue_boid] = flock.position[rogue_boid] + center_of_mass
+
+		# 	logr.debug("Corrected rogue boid {} : {}".format(
+		# 		rogue_boid, flock.position[rogue_boid]
+		# 	))
+
+		# 	# Recalculate the TDA difference...
+		# 	betti_array, _, thresholds = betti_generator.get_betti_array(
+		# 		self.betti_start_thresh,
+		# 		self.betti_end_thresh,
+		# 		self.betti_thresh_spacing,
+		# 		2,
+		# 		[flock.position] # Turn this into a list
+		# 	)
+		# 	tda_diff = self.compare_topology(betti_array)
+		# 	logr.debug("Recalculated TDA percent difference {}".format(tda_diff))
+
+		# 	break
+
+		self.prev_pos = np.copy(flock.position)
+		return flock
 
 
 ################################################################################
@@ -237,8 +296,7 @@ def parse_cmd_line(as_dict=False):
 	parser.add_argument("target_betti_fname", type=str,
 		help="""Betti fname describing the initial topology"""
 	)
-	parser.add_argument("-i", "--initial_pos_fname", type=str,
-		default=defaults["initial_pos_fname"],
+	parser.add_argument("initial_pos_fname", type=str,
 		help="""
 		File of initial positions of boids. DMS file with single time step
 		"""
@@ -291,6 +349,9 @@ def parse_cmd_line(as_dict=False):
 		default=defaults["betti_thresh_spacing"],
 		help=""""""
 	)
+	parser.add_argument("--no_control", action="store_true",
+		help=""""""
+	)
 	parser.add_argument("--log_level", 
 		choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"],
 		default=defaults["log_level"],
@@ -322,11 +383,14 @@ def main():
 
 	# Run the simulation...
 
+	init_pos = read_initial_positions(args["initial_pos_fname"])
+
 	boid_ctrl = BoidController(
 		args["betti_start_thresh"],
 		args["betti_end_thresh"],
 		args["betti_thresh_spacing"],
-		args["target_betti_fname"]
+		args["target_betti_fname"],
+		init_pos
 	)
 	boids_simulation.run_sim(
 		num_boids=args["num_points"],
@@ -337,10 +401,9 @@ def main():
 		seprad_in=args["separation_radius"],
 		alirad_in=args["alignment_radius"],
 		cohrad_in=args["cohesion_radius"],
-		initial_positions=
-			read_initial_positions(args["initial_pos_fname"]) \
-			if args["initial_pos_fname"] else None,
-		control_callback=boid_ctrl.control_boids,
+		initial_positions=init_pos,
+		control_callback=boid_ctrl.control_boids if 
+			not args["no_control"] else None,
 		nframes=args["nframes"],
 		animate=args["animate"]
 	)

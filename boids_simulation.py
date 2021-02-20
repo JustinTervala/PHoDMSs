@@ -181,7 +181,7 @@ def update(*args):
     collection.update()
 
     if ctrl_callback:
-        ctrl_callback(flock.position)
+        flock = ctrl_callback(flock)
 
     #collect positions
     f = open(filename, "a")
@@ -254,8 +254,6 @@ def run_sim(
     ax.set_xticks([])
     ax.set_yticks([])
 
-
-    # animation = FuncAnimation(fig, update, interval=50, frames=999, repeat=False)
     if animate:
         animation = FuncAnimation(
             fig, update, interval=50, frames=nframes, repeat=False
