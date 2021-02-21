@@ -5,7 +5,7 @@ import matplotlib.gridspec as gridspec
 from sys import argv, exit
 
 from vicsek_params import *
-import vicsek_model
+import vicsek_model as model
 
 # Override params if argv[1] == plot
 if len(argv) > 1:

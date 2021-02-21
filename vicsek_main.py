@@ -2,7 +2,7 @@ import numpy as np
 from sys import argv
 
 from vicsek_params import *
-import vicsek_model
+import vicsek_model as model
 
 # For parallel runs, index for this process given as argv
 if len(argv) > 1:

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from sys import argv
 
 from vicsek_params import *
-import vicsek_model
+import vicsek_model as model
 
 ###############################################################
 ## Measure burn-in time for different parameter combinations ##
