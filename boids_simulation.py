@@ -8,7 +8,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.collections import PathCollection
 import sys
 import os
@@ -225,10 +225,6 @@ def run_sim(
 
     if os.path.exists(filename):
         os.remove(filename)
-    
-    # Not saving the animation so ignore this check...
-    # if os.path.exists(filename+"_animation.mp4"):
-    #     os.remove(filename+"_animation.mp4")
 
     with open(filename, 'w') as outfile:
         outfile.write(str(n) + '\n')
@@ -255,15 +251,19 @@ def run_sim(
     ax.set_yticks([])
 
     if animate:
+        # Write a gif of the animation and a png of the final frame of the
+        # animation...
+
+        animation_fname = filename + "_animation.gif"
+        if os.path.exists(animation_fname):
+            os.remove(animation_fname)
+
         animation = FuncAnimation(
             fig, update, interval=50, frames=nframes, repeat=False
         )
-        plt.show()
-        # Saving the animation causes update to be called again 'frames' number 
-        # of times. Dont want this so comment out here. Dont really need the 
-        # animation anyway...
-        # animation.save(filename + '_animation.mp4', fps=20)
-        # print("Animation saved")
+        writer = PillowWriter(fps=12)
+        animation.save(animation_fname, writer=writer)
+        plt.savefig(filename + "_animation_end.png")
 
     else:
         for _ in range(nframes):
